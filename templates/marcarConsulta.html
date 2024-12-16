@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marcar consulta</title>
+</head>
+<body>
+    <h1>Marcar consulta</h1>
+    <form action="/marcarConsulta" method="POST">
+        <h2>Dados do Tutor:</h2><br><br>
+        <label for="nome_tutor">Nome:</label>
+        <input type="text" id="nome_tutor" name="nome_tutor" required><br>
+
+        <label for="telefone">Telefone:</label>
+        <input type="tel" id="telefone" name="telefone" required><br>
+
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required><br><br>
+
+        <h2>Dados do Pet:</h2><br><br>
+        <label for="nome_pet">Nome:</label>
+        <input type="text" id="nome_pet" name="nome_pet" required><br>
+
+        <label for="especie">Especie:</label>
+        <input type="text" id="especie" name="especie" required><br>
+
+        <label for="raca">Raca:</label>
+        <input type="text" id="raca" name="raca" required><br>
+
+        <label for="idade">Idade:</label>
+        <input type="number" id="idade" name="idade" required><br>
+
+        <label for="sexo">Sexo:</label>
+        <select id="sexo" name="sexo" required>
+            <option value="M">M</option>
+            <option value="F">F</option>
+        </select><br>
+
+        <label for="peso">Peso(kg):</label>
+        <input type="number" id="peso" name="peso" required><br>
+
+        <input type="submit" value="Marcar consulta">
+    </form>
+    
+</body>
+</html>
