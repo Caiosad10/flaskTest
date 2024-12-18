@@ -4,13 +4,63 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agendamento</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            text-align: center;
+            width: 300px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            margin: 35px 0;
+        }
+
+        a {
+            text-decoration: none;
+            color: #fff;
+            background-color: #007BFF;
+            padding: 10px 15px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        a:hover {
+            background-color: #0056b3;
+        }
+    </style>
 </head>
 <body>
-    <h1>Agendamento</h1>
-    <br><br>
-    <ul>
-        <li><a href="/marcarConsulta">Marcar Consulta</a></li>
-        <li><a href="/agendarRetorno">Agendar Retorno</a></li>
-    </ul>
+    <div class="container">
+        <h1>Agendamento</h1>
+        <br><br>
+        <ul>
+            <li><a href="/marcarConsulta">Marcar Consulta</a></li>
+            <li><a href="/agendarRetorno">Agendar Retorno</a></li>
+        </ul>
+    </div>
 </body>
 </html>

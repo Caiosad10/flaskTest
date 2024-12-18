@@ -1,4 +1,7 @@
 import psycopg2 #Para o banco de dados
+from psycopg2.extras import RealDictCursor #Extra para o banco de dados
+
+from datetime import datetime
 
 from flask import Flask #Para o desenvolvimento do app web
 
@@ -47,11 +50,16 @@ def marcarConsulta():
             idade = request.form.get('idade')
             sexo = request.form.get('sexo')
             peso = request.form.get('peso')
+            data_consulta = request.form.get('data_consulta')
+            motivo = request.form.get('motivo')
 
-            print(f'nome_tutor={nome_tutor}\ntelefone={telefone}\nemail={email}\nnome_pet={nome_pet}\nespecie={especie}\nraca={raca}\nidade={idade}\nsexo={sexo}\npeso={peso}')
+            print(f'nome_tutor={nome_tutor}\ntelefone={telefone}\nemail={email}\nnome_pet={nome_pet}\nespecie={especie}\nraca={raca}\nidade={idade}\nsexo={sexo}\npeso={peso}\ndata consulta={data_consulta}')
             
             conexao = conexaoBD()
             cursor = conexao.cursor()
+
+            #Iniciar transação
+            cursor.execute("BEGIN")
 
             # Query para a tabela dos tutores
             cursor.execute(
@@ -64,11 +72,25 @@ def marcarConsulta():
 
             # Query para a tabela dos pets
             cursor.execute(
-                "INSERT INTO pets (nome, especie, raca, idade, sexo, peso, tutor_id) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                "INSERT INTO pets (nome, especie, raca, idade, sexo, peso, tutor_id) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
                 (nome_pet, especie, raca, idade, sexo, peso, tutor_id)
             )
+
+            pet_id = cursor.fetchone()[0]
+            print(f'pet_id={pet_id}')
+
+            # Query para a tabela dos agendamentos
+            cursor.execute(
+                "INSERT INTO agendamento (data_horario, motivo, pet_id) VALUES (%s, %s, %s) RETURNING id",
+                (data_consulta, motivo, pet_id)
+            )
+
+            consulta_id = cursor.fetchone()[0]
+            print(f'consulta_id={consulta_id}')
             
+            #Confirmar transação
             conexao.commit()
+
             cursor.close()
             conexao.close()
             
@@ -76,6 +98,8 @@ def marcarConsulta():
             print("Consulta marcada com sucesso!")
             return jsonify({'message': 'Consulta marcada com sucesso!'}), 201
         except Exception as e:
+            #Fazer rollback em caso de erro
+            conexao.rollback()
             print(f"Error: {str(e)}")
             return jsonify({'error': str(e)}), 500
     if request.method == 'GET':
@@ -83,39 +107,64 @@ def marcarConsulta():
     return render_template('marcarConsulta.html')
     
 
-@app.route('/adicionarPet', methods=['GET', 'POST'])
-def adicionarPet():
+@app.route('/agendarRetorno', methods=['GET', 'POST'])
+def agendarRetorno():
+    conexao = conexaoBD()
+    cursor = conexao.cursor(cursor_factory=RealDictCursor)
 
     if request.method == 'POST':
-        print("POST")
         try:
-            nome = request.form.get('nome')
-            especie = request.form.get('especie')
-            raca = request.form.get('raca')
-            idade = request.form.get('idade')
-            sexo = request.form.get('sexo')
-            peso = request.form.get('peso')
-            tutor_id = request.form.get('tutor_id')
-            print(f'nome={nome}, especie={especie}, raca={raca}, idade={idade}, sexo={sexo}, peso={peso}, tutor_id={tutor_id}')
-            conexao = conexaoBD()
-            cursor = conexao.cursor()
+            # Receber os dados do formulario
+            agendamento_id = request.form.get('agendamento_id')
+            data_retorno = request.form.get('data_retorno')
+            motivo = request.form.get('motivo')
+        
+            # Inserir os dados na tabela de retornos
             cursor.execute(
-                "INSERT INTO pets (nome, especie, raca, idade, sexo, peso, tutor_id) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                (nome, especie, raca, idade, sexo, peso, tutor_id)
+                "INSERT INTO retornos (data_retorno, motivo, agendamento_id) VALUES (%s, %s, %s) RETURNING id",
+                (data_retorno, motivo, agendamento_id)
             )
             conexao.commit()
-            cursor.close()
-            conexao.close()
-            if cursor.rowcount == 0:
-                print("Pet adicionado com sucesso!")
-                return jsonify({'message': 'Pet adicionado com sucesso!'}), 201
+            #cursor.close()
+            #conexao.close()
+
+            print("Retorno agendado com sucesso!")
+            return jsonify({'message': 'Retorno agendado com sucesso!'}), 201
         except Exception as e:
             print(f"Error: {str(e)}")
-            return jsonify({'error': str(e)}), 500
-    if request.method == 'GET':
-        print("GET")
-    return render_template('adicionarPet.html')
+            return jsonify({'error': str(e)}), 500  
+        finally:
+            cursor.close()
+            conexao.close()
 
+    elif request.method == 'GET':
+        try:
+            # Buscar todos os agendamentos para exibir no formulario
+            cursor.execute("""
+                SELECT
+                    agendamento.id AS agendamento_id,
+                    pets.nome AS pet_nome, 
+                    agendamento.data_horario 
+                FROM
+                    agendamento 
+                INNER JOIN pets ON agendamento.pet_id =pets.id
+                ORDER BY agendamento.data_horario DESC
+            """)
+            agendamentos = cursor.fetchall() # Lista de agendamentos disponiveis
+            print(agendamentos) #debug
+
+            for agendamento in agendamentos:
+                agendamento['data_horario'] = agendamento['data_horario'].strftime('%d/%m/%Y %H:%M')
+
+            return render_template('agendarRetorno.html', agendamentos=agendamentos)
+        except Exception as e:
+            print(f"Erro ao carregar agendamentos: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+        finally:
+            cursor.close()
+            conexao.close()
+            
+        
 
 
 

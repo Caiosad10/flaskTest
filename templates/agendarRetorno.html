@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agendar Retorno</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            width: 400px; /* Largura do container */
+            text-align: left;
+            overflow: auto; /* Permite rolagem se o conteúdo exceder a altura */
+            max-height: 90vh; /* Limita a altura do container */
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+
+        select,
+        input[type="date"],
+        textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        textarea {
+            resize: vertical;
+            height: 80px;
+        }
+
+        input[type="submit"] {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            width: 100%;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Agendar Retorno</h1>
+        <form action="/agendarRetorno" method="POST">
+            <label for="agendamento_id">Escolha um Agendamento:</label>
+            <select name="agendamento_id" id="agendamento_id" required>
+                {% for agendamento in agendamentos %}
+                    <option value="{{ agendamento.agendamento_id }}">
+                        {{ agendamento['pet_nome'] }} - {{ agendamento['data_horario'] }}
+                    </option>
+                {% endfor %}
+            </select>
+            <br>
+            <label for="data_retono">Data do Retorno:</label>
+            <input type="date" name="data_retorno" id="data_retorno" required>
+            <br>
+            <label for="motivo">Motivo do retorno (opcional):</label>
+            <textarea name="motivo" id="motivo" rows="4" cols="50"></textarea>
+            <br>
+            <input type="submit" value="Agendar Retorno">
+        </form>
+    </div>
+</body>
+</html>
