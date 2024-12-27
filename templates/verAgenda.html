@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ver Agenda</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #ccc;
+            background: rgb(34,193,195);
+            background: linear-gradient(0deg, rgba(34,193,195,1) 0%, rgba(3,2,30,1) 93%);
+            margin: 0;
+            padding: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #007BFF;
+            color: white;
+        }
+        .confirm-button, .cancel-button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        .cancel-button {
+            background-color: #f44336; /* Vermelho para cancelar */
+        }
+        .confirm-button:hover, .cancel-button:hover {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <h1>Agenda</h1>
+    <h2>Consultas Agendadas</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Tutor</th>
+                <th>Pet</th>
+                <th>Data da Consulta</th>
+                <th>Status</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for consulta in consultas %}
+            <tr>
+                <td>{{ consulta.agendamento_id }}</td>
+                <td>{{ consulta.tutor_nome }}</td>
+                <td>{{ consulta.pet_nome }}</td>
+                <td>{{ consulta.data_horario }}</td>
+                <td>{{ consulta.status }}</td>
+                <td>
+                    <form action="/confirmar_consulta/{{ consulta.agendamento_id }}" method="POST">
+                        <input type="text" name="motivo" placeholder="Observação">
+                        <button type="submit" class="confirm-button">Confirmar</button>
+                    </form>
+                    <form action="/cancelar_consulta/{{ consulta.agendamento_id }}" method="POST" style="display: inline;">
+                        <button type="submit" class="cancel-button">Cancelar</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Retornos Agendados</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Tutor</th>
+                <th>Pet</th>
+                <th>Data do Retorno</th>
+                <th>Status</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for retorno in retornos %}
+            <tr>
+                <td>{{ retorno.retorno_id }}</td>
+                <td>{{ retorno.tutor_nome }}</td>
+                <td>{{ retorno.pet_nome }}</td>
+                <td>{{ retorno.data_retorno }}</td>
+                <td>{{ retorno.status }}</td>
+                <td>
+                    <form action="/confirmar_retorno/{{ retorno.retorno_id }}" method="POST">
+                        <button type="submit" class="confirm-button">Confirmar</button>
+                    </form>
+                    <form action="/cancelar_retorno/{{ retorno.retorno_id }}" method="POST" style="display: inline;">
+                        <input type="text" name="motivo" placeholder="Motivo do cancelamento">
+                        <button type="submit" class="cancel-button">Cancelar</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
+
+    
