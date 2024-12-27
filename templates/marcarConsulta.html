@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +7,8 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
+            background: rgb(34,193,195);
+            background: linear-gradient(0deg, rgba(34,193,195,1) 0%, rgba(3,2,30,1) 93%);
             margin: 0;
             padding: 0;
             display: flex;
@@ -17,7 +18,7 @@
         }
 
         .container {
-            background-color: #fff;
+            background: rgb(34,193,195);
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             padding: 20px;
@@ -78,52 +79,142 @@
         input[type="submit"]:hover {
             background-color: #0056b3;
         }
+        
+        .home-button {
+            display: flex;
+            justify-content: center;
+            margin: 10px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            
+        }
+
+        .home-button:hover {
+            background-color: #0056b3;
+        }
+
+        h1, h2 {
+            color: #ffffff;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <header>
+            <a href="/" class="home-button">Voltar ao Início</a>
+        </header>
         <h1>Marcar consulta</h1>
         <form action="/marcarConsulta" method="POST">
-            <h2>Dados do Tutor:</h2><br><br>
-            <label for="nome_tutor">Nome:</label>
-            <input type="text" id="nome_tutor" name="nome_tutor" required><br>
+            <section>
+                <h2>Dados do Tutor:</h2><br><br>
+                <label for="nome_tutor">Nome:</label>
+                <input type="text" id="nome_tutor" name="nome_tutor" placeholder="Nome completo" required><br>
 
-            <label for="telefone">Telefone:</label>
-            <input type="tel" id="telefone" name="telefone" required><br>
+                <label for="telefone">Telefone:</label>
+                <input type="tel" id="telefone" name="telefone" placeholder="(DDD) 9XXXX-XXXX"><br>
 
-            <label for="email">Email:</label>
-            <input type="email" id="email" name="email" required><br><br>
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" placeholder="exemplo@dominio.com"><br><br>
+                <input type="reset" value="Limpar">
+            </section>
+            <section>
+                <h2>Dados do Pet:</h2><br><br>
+                <label for="nome_pet">Nome:</label>
+                <input type="text" id="nome_pet" name="nome_pet" required><br>
 
-            <h2>Dados do Pet:</h2><br><br>
-            <label for="nome_pet">Nome:</label>
-            <input type="text" id="nome_pet" name="nome_pet" required><br>
+                <label for="especie">Especie:</label>
+                <input type="text" id="especie" name="especie" required><br>
 
-            <label for="especie">Especie:</label>
-            <input type="text" id="especie" name="especie" required><br>
+                <label for="raca">Raca:</label>
+                <input type="text" id="raca" name="raca" required><br>
 
-            <label for="raca">Raca:</label>
-            <input type="text" id="raca" name="raca" required><br>
+                <label for="idade">Idade:</label>
+                <input type="number" id="idade" name="idade" required><br>
 
-            <label for="idade">Idade:</label>
-            <input type="number" id="idade" name="idade" required><br>
+                <label for="sexo">Sexo:</label>
+                <select id="sexo" name="sexo" required>
+                    <option value="M">M</option>
+                    <option value="F">F</option>
+                </select><br>
 
-            <label for="sexo">Sexo:</label>
-            <select id="sexo" name="sexo" required>
-                <option value="M">M</option>
-                <option value="F">F</option>
-            </select><br>
+                <label for="peso">Peso(kg):</label>
+                <input type="number" id="peso" name="peso" required><br>
+                <input type="reset" value="Limpar">
+            </section>
+            <section>
+                <h2>Dados da Consulta:</h2><br><br>
+                <label for="data_consulta">Data:</label>
+                <input type="date" id="data_consulta" name="data_consulta" required onchange="validarDataConsulta(), validarHorarioConsulta()">
+                <select id="hora_consulta" name="hora_consulta" required>
+                    <option value="" disabled selected>Selecione o horario</option>
+                </select>
+                <p id="erro_data" style="color: red; display: none;">
+                    A data/hora deve ser posterior ao momento atual.
+                </p>
+                <br>
 
-            <label for="peso">Peso(kg):</label>
-            <input type="number" id="peso" name="peso" required><br>
+                <label for="motivo">Motivo:</label>
+                <textarea id="motivo" name="motivo" required></textarea><br>
 
-            <h2>Dados da Consulta:</h2><br><br>
-            <label for="data_consulta">Data:</label>
-            <input type="datetime-local" id="data_consulta" name="data_consulta" required><br>
-
-            <label for="motivo">Motivo:</label>
-            <textarea id="motivo" name="motivo" required></textarea><br>
-
-            <input type="submit" value="Marcar consulta">
+                <input type="submit" value="Marcar consulta">
+                <input type="reset" value="Limpar">
+            </section>
         </form>
 </body>
+<script>
+    setTimeout(() => {
+        const notifications = document.querySelectorAll('.notification');
+        notifications.forEach(notification => notification.remove());
+    }, 3000);
+
+    function validarDataConsulta() {
+        const campoData = document.getElementById('data_consulta');
+        const erroMensagem = document.getElementById('erro_data');
+        const dataSelecionada = new Date(campoData.value);
+        const dataAtual = new Date();
+
+        if (dataSelecionada <= dataAtual) {
+            erroMensagem.style.display = 'block';
+            campoData.value = ''; //limpa o campo
+        } else {
+            erroMensagem.style.display = 'none';
+        }
+    }
+
+    function validarHorarioConsulta() {
+        const campoData = document.getElementById('data_consulta');
+        const erroMensagem = document.getElementById('erro_data');
+        const dataSelecionada = new Date(campoData.value);
+
+        const hora = dataSelecionada.getHours();
+        if (hora < 9 || hora > 22) {
+            erroMensagem.style.display = 'block';
+            campoData.value = ''; //limpa o campo
+        } else {
+            erroMensagem.style.display = 'none';
+        }
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        const horaConsulta = document.getElementById('hora_consulta');
+
+
+        // Lista de horarios
+        const horariosFixos = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00", "22:00"];
+        
+        // Popula o campo select com os horarios da lista
+        horariosFixos.forEach(horario => {
+            const option = document.createElement('option');
+            option.value = horario;
+            option.text = horario;
+            horaConsulta.appendChild(option);
+        });
+    })
+
+</script>
 </html>
