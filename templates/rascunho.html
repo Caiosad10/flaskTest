@@ -1,0 +1,23 @@
+<h2>Retornos</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Hora</th>
+                <th>Pet</th>
+                <th>Tutor</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for retorno in retornos %}
+            <tr>
+                <td>{{ retorno.data_retorno }}</td>
+                <td>{{ retorno.horario }}</td>
+                <td>{{ retorno.nome_pet }}</td>
+                <td>{{ retorno.nome_tutor }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
