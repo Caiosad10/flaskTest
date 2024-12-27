@@ -7,7 +7,12 @@ from flask import Flask #Para o desenvolvimento do app web
 
 from flask import request, jsonify, render_template #Para adicionar uma rota que faça com que o usuario possa adicionar dados no banco de dados
 
+from flask import redirect, url_for, flash, session #Servirá para adicionar uma notificação pop-up na tela do navegador
+
+
+
 app = Flask(__name__)
+app.secret_key = 'sua_chave_secreta' #Necessario para usar flash()
 
 BD = {
     'database': 'agendamentos',
@@ -94,14 +99,15 @@ def marcarConsulta():
             cursor.close()
             conexao.close()
             
-            
-            print("Consulta marcada com sucesso!")
-            return jsonify({'message': 'Consulta marcada com sucesso!'}), 201
+            print("Consulta agendada com sucesso!")
+            flash('Consulta agendada com sucesso!', 'success')
+            return redirect(url_for('home'))
         except Exception as e:
             #Fazer rollback em caso de erro
             conexao.rollback()
             print(f"Error: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            flash(f"Ocorreu um erro: {str(e)}", 'error')
+            return redirect(url_for('marcarConsulta'))
     if request.method == 'GET':
         print("GET")
     return render_template('marcarConsulta.html')
@@ -128,11 +134,12 @@ def agendarRetorno():
             #cursor.close()
             #conexao.close()
 
-            print("Retorno agendado com sucesso!")
-            return jsonify({'message': 'Retorno agendado com sucesso!'}), 201
+            print("Retorno agendada com sucesso!")
+            flash('Retorno agendada com sucesso!', 'success')
+            return redirect(url_for('home'))
         except Exception as e:
-            print(f"Error: {str(e)}")
-            return jsonify({'error': str(e)}), 500  
+            flash(f"Ocorreu um erro: {str(e)}", 'error')
+            return redirect(url_for('agendarRetorno'))
         finally:
             cursor.close()
             conexao.close()
@@ -164,32 +171,189 @@ def agendarRetorno():
             cursor.close()
             conexao.close()
             
-        
-
-
-
-    '''data = request.json
-    nome = data.get('nome')
-    especie = data.get('especie')
-    raca = data.get('raca')
-    idade = data.get('idade')
-    sexo = data.get('sexo')
-    peso = data.get('peso')
-    tutor_id = data.get('tutor_id')
+@app.route('/ver_agenda', methods=['GET', 'POST'])
+def ver_agenda():
+    conexao = conexaoBD()
+    cursor = conexao.cursor(cursor_factory=RealDictCursor)
 
     try:
-        conexao = conexaoBD()
-        cursor = conexao.cursor()
-        cursor.execute(
-            "INSERT INTO pets (nome, especie, raca, idade, sexo, peso, tutor_id), VALUES (%s, %s, %s, %s, %s)",
-            (nome, especie, raca, idade, sexo, peso, tutor_id)
-        )
-        conexao.commit()
+        #Buscar consultas agendadas
+        cursor.execute("""
+            SELECT 
+                agendamento.id AS agendamento_id,
+                tutores.nome AS tutor_nome,
+                pets.nome AS pet_nome,
+                agendamento.data_horario,
+                agendamento.status,
+                'consulta' AS tipo
+            FROM
+                agendamento
+            INNER JOIN pets ON agendamento.pet_id = pets.id
+            INNER JOIN tutores ON pets.tutor_id = tutores.id
+            WHERE agendamento.status != 'cancelada'
+                AND (agendamento.data_horario > CURRENT_TIMESTAMP OR agendamento.status != 'confirmado')
+            ORDER BY agendamento.data_horario           
+        """)
+        consultas = cursor.fetchall()
+
+        #Buscar retornos agendados
+        cursor.execute("""
+            SELECT 
+                retornos.id AS retorno_id,
+                tutores.nome AS tutor_nome,
+                pets.nome AS pet_nome,
+                retornos.data_retorno,
+                retornos.status,
+                'retorno' AS tipo
+            FROM
+                retornos
+            INNER JOIN agendamento ON retornos.agendamento_id = agendamento.id
+            INNER JOIN pets ON agendamento.pet_id = pets.id
+            INNER JOIN tutores ON pets.tutor_id = tutores.id
+            WHERE retornos.status != 'cancelada'
+                AND (retornos.data_retorno > CURRENT_TIMESTAMP OR retornos.status != 'confirmado')
+                       
+            ORDER BY retornos.data_retorno
+        """)
+        retornos = cursor.fetchall()
+
+        return render_template('verAgenda.html', consultas=consultas, retornos=retornos)
+    except Exception as e:
+        print(f"Error : {str(e)}")
+        return jsonify({'error': str(e)}), 500
+    finally:
         cursor.close()
         conexao.close()
-        return jsonify({'message': 'Pet adicionado com sucesso!'}), 201
+    
+#Rota para confirmar consulta
+@app.route('/confirmar_consulta/<int:agendamento_id>', methods=['POST'])
+def confirmar_consulta(agendamento_id):
+    conexao = conexaoBD()
+    cursor = conexao.cursor(cursor_factory=RealDictCursor)
+
+    try:
+        #Obter observação fornecida
+        motivo = request.form.get('motivo')
+
+        #Iniciar transação
+        cursor.execute("BEGIN")
+
+        #Atualizar o status do agendamento para confirmado
+        cursor.execute("""
+            UPDATE agendamento
+            SET status = 'confirmado'
+            WHERE id = %s
+        """, (agendamento_id,))
+
+        #Adicionar ao historico
+        cursor.execute("""
+            INSERT INTO historico (pet_id, data_consulta, observacoes) 
+            SELECT pet_id, data_horario, %s
+            FROM agendamento
+            WHERE id = %s
+        """, (motivo, agendamento_id))
+
+        #Finalizar transação
+        conexao.commit()
+
+        return redirect(url_for('ver_agenda'))
     except Exception as e:
+        #Desfazer transação
+        conexao.rollback()
+        print(f"Error : {str(e)}")
         return jsonify({'error': str(e)}), 500
-'''
+    finally:
+        cursor.close()
+        conexao.close()
+
+@app.route('/cancelar_consulta/<int:agendamento_id>', methods=['POST'])
+def cancelar_consulta(agendamento_id):
+    conexao = conexaoBD()
+    cursor = conexao.cursor(cursor_factory=RealDictCursor)
+
+    try:
+        #Iniciar transação
+        cursor.execute("BEGIN")
+
+        #Atualizar o status do agendamento para cancelado
+        cursor.execute("""
+            UPDATE agendamento
+            SET status = 'cancelado'
+            WHERE id = %s
+        """, (agendamento_id,))
+
+        #Finalizar transação
+        conexao.commit()
+
+        return redirect(url_for('ver_agenda'))
+    except Exception as e:
+        #Desfazer transação
+        cursor.execute("ROLLBACK")
+        print(f"Error : {str(e)}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        conexao.close()
+
+@app.route('/confirmar_retorno/<int:retorno_id>', methods=['POST'])
+def confirmar_retorno(retorno_id):
+    conexao = conexaoBD()
+    cursor = conexao.cursor(cursor_factory=RealDictCursor)
+
+    try:
+        #Iniciar transação
+        cursor.execute("BEGIN")
+
+        #Atualizar o status do agendamento para confirmado
+        cursor.execute("""
+            UPDATE retornos
+            SET status = 'confirmado'
+            WHERE id = %s
+        """, (retorno_id,))
+
+        #Finalizar transação
+        conexao.commit()
+
+        return redirect(url_for('ver_agenda'))
+    except Exception as e:
+        #Desfazer transação
+        cursor.execute("ROLLBACK")
+        print(f"Error : {str(e)}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        conexao.close()
+
+@app.route('/cancelar_retorno/<int:retorno_id>', methods=['POST'])
+def cancelar_retorno(retorno_id):
+    conexao = conexaoBD()
+    cursor = conexao.cursor(cursor_factory=RealDictCursor)
+
+    try:
+
+        motivo_cancelamento = request.form.get('motivo')
+
+        #Iniciar transação
+        cursor.execute("BEGIN")
+
+        #Atualizar o status do agendamento para cancelado
+        cursor.execute("""
+            UPDATE retornos
+            SET status = 'cancelado',
+                motivo_cancelamento = %s
+            WHERE id = %s
+        """, (motivo_cancelamento,retorno_id))
+
+        #Finalizar transação
+        conexao.commit()
+
+        return redirect(url_for('ver_agenda'))
+    except Exception as e:
+        #Desfazer transação
+        cursor.execute("ROLLBACK")
+        print(f"Error : {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     app.run(debug=True)
