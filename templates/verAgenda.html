@@ -4,15 +4,46 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ver Agenda</title>
-    <style>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+   <style>
         body {
             font-family: Arial, sans-serif;
-            color: #ccc;
             background: rgb(34,193,195);
             background: linear-gradient(0deg, rgba(34,193,195,1) 0%, rgba(3,2,30,1) 93%);
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
         }
+        .container {
+            background: rgb(34,193,195);
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            width: 10000px;
+            text-align: left;
+            overflow: auto;
+            max-height: 90vh;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #555;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -40,78 +71,253 @@
         .confirm-button:hover, .cancel-button:hover {
             opacity: 0.8;
         }
-    </style>
+
+        .home-button {
+            display: flex;
+            justify-content: center;
+            margin: 10px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            
+        }
+
+        .home-button:hover {
+            background-color: #0056b3;
+        }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 16px;
+            z-index: 1000;
+        }
+        .notification.success {
+            background-color: #4CAF50; /* Verde para sucesso */
+        }
+        .notification.error {
+            background-color: #f44336; /* Vermelho para erro */
+        }
+    </style> 
 </head>
 <body>
-    <h1>Agenda</h1>
-    <h2>Consultas Agendadas</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Tutor</th>
-                <th>Pet</th>
-                <th>Data da Consulta</th>
-                <th>Status</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for consulta in consultas %}
-            <tr>
-                <td>{{ consulta.agendamento_id }}</td>
-                <td>{{ consulta.tutor_nome }}</td>
-                <td>{{ consulta.pet_nome }}</td>
-                <td>{{ consulta.data_horario }}</td>
-                <td>{{ consulta.status }}</td>
-                <td>
-                    <form action="/confirmar_consulta/{{ consulta.agendamento_id }}" method="POST">
-                        <input type="text" name="motivo" placeholder="Observação">
-                        <button type="submit" class="confirm-button">Confirmar</button>
-                    </form>
-                    <form action="/cancelar_consulta/{{ consulta.agendamento_id }}" method="POST" style="display: inline;">
-                        <button type="submit" class="cancel-button">Cancelar</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="notification-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="notification {{ category }}">{{ message }}</div>
+             {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
 
-    <h2>Retornos Agendados</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Tutor</th>
-                <th>Pet</th>
-                <th>Data do Retorno</th>
-                <th>Status</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for retorno in retornos %}
-            <tr>
-                <td>{{ retorno.retorno_id }}</td>
-                <td>{{ retorno.tutor_nome }}</td>
-                <td>{{ retorno.pet_nome }}</td>
-                <td>{{ retorno.data_retorno }}</td>
-                <td>{{ retorno.status }}</td>
-                <td>
-                    <form action="/confirmar_retorno/{{ retorno.retorno_id }}" method="POST">
-                        <button type="submit" class="confirm-button">Confirmar</button>
-                    </form>
-                    <form action="/cancelar_retorno/{{ retorno.retorno_id }}" method="POST" style="display: inline;">
-                        <input type="text" name="motivo" placeholder="Motivo do cancelamento">
-                        <button type="submit" class="cancel-button">Cancelar</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="container">
+        <header>
+            <a href="/" class="home-button">Voltar ao Início</a>
+        </header>
+        <h1>Agenda</h1>
+        <h2>Consultas Agendadas</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Tutor</th>
+                    <th>Telefone</th>
+                    <th>Pet</th>
+                    <th>Data da Consulta</th>
+                    <th>Motivo</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for consulta in consultas %}
+                <tr>
+                    <td>{{ consulta.agendamento_id }}</td>
+                    <td>{{ consulta.tutor_nome }}</td>
+                    <td>{{ consulta.tutor_telefone }}</td>
+                    <td>{{ consulta.pet_nome }}</td>
+                    <td>{{ consulta.data_horario }}</td>
+                    <td>{{ consulta.motivo }}</td>
+                    <td>{{ consulta.status }}</td>
+                    <td>
+                        <div class="btn-container">
+                            <button class="btn btn-success confirm-button" data-bs-toggle="modal" data-bs-target="#modalObservacoes{{ consulta.agendamento_id }}">Confirmar</button>
+                        </div>
+                        <div class="btn-container">
+                            <form action="/cancelar_consulta/{{ consulta.agendamento_id }}" method="POST" style="display: incline;">
+                                <button type="submit" class="btn btn-danger cancel-button" data-tipo="consulta">Cancelar</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                <div class="modal fade" id="modalObservacoes{{ consulta.agendamento_id }}" tabindex="-1" aria-labelledby="modalObservacoesLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="modalObservacoesLabel">Observações</h5>
+                                <button type="button" class="btn-close" data-bs-dimiss="modal" arial-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form action="/confirmar_consulta/{{ consulta.agendamento_id }}" method="POST">
+                                    <textarea name="observacoes" class="form-control" placeholder="Digite as observações destá consulta"></textarea>
+                                    <button type="submit" class="btn btn-primary mt-2">Salvar Observações</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2>Retornos Agendados</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Tutor</th>
+                    <th>Pet</th>
+                    <th>Data do Retorno</th>
+                    <th>Motivo</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for retorno in retornos %}
+                <tr>
+                    <td>{{ retorno.retorno_id }}</td>
+                    <td>{{ retorno.tutor_nome }}</td>
+                    <td>{{ retorno.pet_nome }}</td>
+                    <td>{{ retorno.data_retorno }}</td>
+                    <td>{{ retorno.motivo }}</td>
+                    <td>{{ retorno.status }}</td>
+                    <td>
+                        <div class="btn-container">
+                            <form action="/confirmar_retorno/{{ retorno.retorno_id }}" method="POST" style="display: inline;">
+                            <button type="submit" class="btn btn-success confirm-button">Confirmar</button>
+                            </form>
+                        </div>
+                        <div class="btn-container">
+                            <button class="btn btn-danger cancel-button" data-tipo="retorno" data-bs-toggle="modal" data-bs-target="#modalCancelamentoRetorno{{ retorno.retorno_id }}">Cancelar</button>
+                        </div>
+                        <div class="modal fade" id="modalCancelamentoRetorno{{ retorno.retorno_id }}" tabindex="-1" aria-labelledby="modalCancelamentoRetornoLabel" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="modalCancelamentoRetornoLabel">Motivo do Cancelamento</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form action="/cancelar_retorno/{{ retorno.retorno_id }}" method="POST">
+                                            <textarea name="motivo_cancelamento" class="form-control" placeholder="Digite o motivo do cancelamento deste retorno"></textarea>
+                                            <button type="submit" class="btn btn-primary mt-2">Salvar Motivo</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous">
+        </script>
+    </div>
 </body>
+<script>
+
+    document.addEventListener('DOMContentLoaded', () =>{
+
+        //Função para lidar com o cancelamento
+        function handleCancel(event) {
+            event.preventDefault();
+            const form = event.target.closest('form');
+            const url = form.action; // Obtenha a URL do formulário
+            fetch(url, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    updateNotifications();
+                    const linhaTabela = event.target.closest('tr');
+                    linhaTabela.remove();
+                } else {
+                    updateNotifications();
+                }
+            })
+            .catch(error => {
+                console.error("Erro na requisição:", error);
+                
+            });
+        }
+
+
+        //Botão cancelar consulta
+        const botoesCancelarConsulta = document.querySelectorAll('.cancel-button[data-tipo="consulta"]'); // Seletor mais especifico
+        botoesCancelarConsulta.forEach(handleCancel);
+
+        //Botão cancelar retorno
+        const botoesCancelarRetorno = document.querySelectorAll('.cancel-button[data-tipo="retorno"]'); // Seletor mais especifico
+        botoesCancelarRetorno.forEach(handleCancel);
+
+        //Botões de confirmar 
+        const botoesConfirmar = document.querySelectorAll('.confirm-button');
+        botoesConfirmar.forEach(botao => {
+            botao.addEventListener('click', (event) => {
+                event.preventDefault(); //Impede o envio padrão
+                const modal = event.target.closest('.modal');
+                const form = modal.querySelectorAll('form');
+                const url = form.action
+
+                fetch(url, {
+                    method: 'POST',
+                    body: new FormData(formModal)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        updateNotifications();
+                        const linhaTabela = event.target.closest('tr');
+                        linhaTabela.remove();
+                        $(modal).modal('hide');
+                    } else {
+                        updateNotifications();
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro na requisição:', error);
+                    
+                });
+            });
+        });
+        function updateNotifications() {
+            fetch('/notificacoes')
+            .then(response => response.text())
+            .then(html => {
+                const notificationsContainer = document.querySelector('.notifications-container') || document.createElement('div');
+                notificationsContainer.className = 'notifications-container';
+                notificationsContainer.innerHTML = html;
+                document.body.appendChild(notificationsContainer);
+            })
+            // Remove todas as notificações após 3 segundos
+            setTimeout(() => {
+                notificationsContainer.remove();
+            }, 3000);
+        }
+    });
+
+</script>
 </html>
 
     
