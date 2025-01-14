@@ -72,6 +72,7 @@ def marcarConsulta():
             idade_tipo = request.form.get('idade_tipo')
             sexo = request.form.get('sexo')
             peso = request.form.get('peso')
+            data_nascimento = request.form.get('data_nascimento')
             data_consulta = request.form.get('data_consulta')
             motivo = request.form.get('motivo')
             hora_consulta = request.form.get('hora_consulta')
@@ -87,7 +88,7 @@ def marcarConsulta():
                 return redirect(url_for('marcarConsulta'))
 
             #Debug para verificar se os dados foram recebidos
-            print(f'nome_tutor={nome_tutor}\ntelefone={telefone}\nemail={email}\nnome_pet={nome_pet}\nespecie={especie}\nraca={raca}\nidade={idade}\nidade tipo = {idade_tipo}\nsexo={sexo}\npeso={peso}\ndata consulta={data_consulta}\nhora consulta={hora_consulta}\ndata consulta str={agendamento_datetime}')
+            print(f'nome_tutor={nome_tutor}\ntelefone={telefone}\nemail={email}\nnome_pet={nome_pet}\nespecie={especie}\nraca={raca}\nidade={idade}\nidade tipo = {idade_tipo}\nsexo={sexo}\npeso={peso}\ndata_nascimento={data_nascimento}\ndata consulta={data_consulta}\nhora consulta={hora_consulta}\ndata consulta str={agendamento_datetime}')
             
             #Conecta com o banco utilizando a funcao conexaoBD
             conexao = conexaoBD()
@@ -110,8 +111,8 @@ def marcarConsulta():
 
             # Query para a tabela dos pets
             cursor.execute(
-                "INSERT INTO pets (nome, especie, raca, idade, sexo, peso, tutor_id, idade_tipo) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
-                (nome_pet, especie, raca, idade, sexo, peso, tutor_id, idade_tipo)
+                "INSERT INTO pets (nome, especie, raca, idade, sexo, peso, tutor_id, idade_tipo) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                (nome_pet, especie, raca, idade, sexo, peso, tutor_id, idade_tipo, data_nascimento)
             )
             # Obter o ID do pet inserido
             pet_id = cursor.fetchone()[0]
