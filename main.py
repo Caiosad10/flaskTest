@@ -11,6 +11,8 @@ from flask import redirect, url_for, flash, session #Servirá para adicionar uma
 
 from datetime import datetime #Para trabalhar com datas (utilizado para adicionar o horário no banco de dados de "marcarConsulta")
 
+from datetime import date, timedelta #Serão usados para criar uma função que calculará a idade mediante a data de nascimento
+
 
 app = Flask(__name__)
 app.secret_key = 'sua_chave_secreta' #Necessario para usar flash()
@@ -109,9 +111,34 @@ def marcarConsulta():
             tutor_id = cursor.fetchone()[0]
             print(f'tutor_id={tutor_id}')
 
+
+            # Função para calcular a idade do pet mediante a data de nascimento
+            def calcular_idade_pet(data_nascimento):
+                if data_nascimento:
+                    today = date.today()
+                    age = today.year - data_nascimento.year
+
+                    if today.month < data_nascimento.month or (today.month == data_nascimento.month and today.day < data_nascimento.day):
+                        age -=1
+
+                    # Calcular a diferença em meses
+                    meses = (today.year - data_nascimento.year) * 12 + (today.month - data_nascimento.month)
+
+                    if meses < 12:
+                        return meses, 'Meses'
+                    else:
+                        return age, 'Anos'
+                else:
+                    return None, None
+
+            # Verificar se a data de nascimento existe, se não calcular a idade
+            if data_nascimento:
+                idade, idade_tipo = calcular_idade_pet(datetime.strptime(data_nascimento, '%Y-%m-%d').date())
+            else:
+                data_nascimento = None
             # Query para a tabela dos pets
             cursor.execute(
-                "INSERT INTO pets (nome, especie, raca, idade, sexo, peso, tutor_id, idade_tipo) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                "INSERT INTO pets (nome, especie, raca, idade, sexo, peso, tutor_id, idade_tipo, data_nascimento) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
                 (nome_pet, especie, raca, idade, sexo, peso, tutor_id, idade_tipo, data_nascimento)
             )
             # Obter o ID do pet inserido
@@ -136,11 +163,16 @@ def marcarConsulta():
             print("Consulta agendada com sucesso!")
             flash('Consulta agendada com sucesso!', 'success')
             return redirect(url_for('home'))
+        except psycopg2.Error as e:
+            conexao.rollback()
+            print(f"Erro no banco de dados: {str(e)}")
+            flash(f"Ocorreu um erro no banco de dados: {str(e)}", 'error')
+            return redirect(url_for('marcarConsulta'))    
         except Exception as e:
             #Fazer rollback em caso de erro
             conexao.rollback()
-            print(f"Error: {str(e)}")
-            flash(f"Ocorreu um erro: {str(e)}", 'error')
+            print(f"Error inesperado: {str(e)}")
+            flash(f"Ocorreu um erro inesperado: {str(e)}", 'error')
             return redirect(url_for('marcarConsulta'))
     if request.method == 'GET':
         print("GET")
@@ -158,6 +190,34 @@ def agendarRetorno():
             agendamento_id = request.form.get('agendamento_id')
             data_retorno = request.form.get('data_retorno')
             motivo = request.form.get('motivo')
+
+            # Verificar se existe um retorno cancelado
+            cursor.execute(
+                "SELECT id FROM retornos WHERE agendamento_id = %s AND status = 'cancelado'",
+                (agendamento_id,)
+            )
+            retorno_cancelado = cursor.fetchone()
+
+            if retorno_cancelado:
+                #Atualizar o status para "pendente" e remover o motivo do cancelamento
+                cursor.execute("""
+                    UPDATE
+                        retornos
+                    SET 
+                        status = 'pendente',
+                        motivo_cancelamento = NULL,
+                        data_retorno = %s,
+                        motivo = %s
+                    WHERE
+                        id = %s         
+                    """, (data_retorno, motivo, retorno_cancelado['id'])
+                )
+                conexao.commit()
+
+                print("Retorno reagendado com sucesso!")
+                flash("Retorno reagendado com sucesso!", "success")
+                return redirect(url_for('home'))
+
         
             # Inserir os dados na tabela de retornos
             cursor.execute(
@@ -171,8 +231,16 @@ def agendarRetorno():
             print("Retorno agendada com sucesso!")
             flash('Retorno agendada com sucesso!', 'success')
             return redirect(url_for('home'))
+        except psycopg2.Error as e:
+            conexao.rollback()
+            print(f"Erro no banco de dados: {str(e)}")
+            flash(f"Ocorreu um erro no banco de dados: {str(e)}", 'error')
+            return redirect(url_for('agendarRetorno')) 
         except Exception as e:
-            flash(f"Ocorreu um erro: {str(e)}", 'error')
+            #Fazer rollback em caso de erro
+            conexao.rollback()
+            print(f"Error inesperado: {str(e)}")
+            flash(f"Ocorreu um erro inesperado: {str(e)}", 'error')
             return redirect(url_for('agendarRetorno'))
         finally:
             cursor.close()
@@ -183,24 +251,66 @@ def agendarRetorno():
             # Buscar todos os agendamentos para exibir no formulario
             cursor.execute("""
                 SELECT
-                    agendamento.id AS agendamento_id,
-                    pets.nome AS pet_nome, 
-                    agendamento.data_horario 
-                FROM
-                    agendamento 
-                INNER JOIN pets ON agendamento.pet_id =pets.id
-                ORDER BY agendamento.data_horario DESC
+                    id AS agendamento_id,
+                    pet_nome,
+                    data_horario,
+                    observacao,
+                    tipo,
+                    data_retorno,
+                    status
+                FROM (
+                    SELECT
+                        agendamento.id AS id,
+                        pets.nome AS pet_nome,
+                        agendamento.data_horario,
+                        historico.observacoes AS observacao,
+                        retornos.data_retorno AS data_retorno,
+                        'consulta' AS tipo,
+                        agendamento.status
+                    FROM 
+                        agendamento
+                    INNER JOIN pets ON agendamento.pet_id = pets.id
+                    LEFT JOIN historico ON historico.pet_id = agendamento.pet_id
+                    LEFT JOIN retornos ON agendamento.id = retornos.agendamento_id
+                    WHERE agendamento.status = 'confirmado'
+                    UNION ALL
+                    SELECT
+                        retornos.agendamento_id AS id,
+                        pets.nome AS pet_nome,
+                        agendamento.data_horario,
+                        retornos.motivo_cancelamento AS observacao,
+                        retornos.data_retorno,
+                        'retorno' AS tipo,
+                        retornos.status
+                        
+                    FROM
+                        retornos
+                    INNER JOIN agendamento ON retornos.agendamento_id = agendamento.id
+                    INNER JOIN pets ON agendamento.pet_id = pets.id
+                    WHERE retornos.status = 'cancelado'                
+                ) AS combined_data
+                    ORDER BY data_horario DESC
             """)
             agendamentos = cursor.fetchall() # Lista de agendamentos disponiveis
             print(agendamentos) #debug
 
             for agendamento in agendamentos: # Formata a data e hora para o formato brasileiro
                 agendamento['data_horario'] = agendamento['data_horario'].strftime('%d/%m/%Y %H:%M')
+                if agendamento['data_retorno']:
+                    agendamento['data_retorno'] = agendamento['data_retorno'].strftime('%d/%m/%Y')
 
             return render_template('agendarRetorno.html', agendamentos=agendamentos) #"agendamentos" recebe o "agendamentos" e passa para o template
+        except psycopg2.Error as e:
+            conexao.rollback()
+            print(f"Erro no banco de dados: {str(e)}")
+            flash(f"Ocorreu um erro no banco de dados: {str(e)}", 'error')
+            return redirect(url_for('agendarRetorno')) 
         except Exception as e:
-            print(f"Erro ao carregar agendamentos: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            #Fazer rollback em caso de erro
+            conexao.rollback()
+            print(f"Error inesperado: {str(e)}")
+            flash(f"Ocorreu um erro inesperado: {str(e)}", 'error')
+            return redirect(url_for('agendarRetorno'))
         finally:
             cursor.close()
             conexao.close()
@@ -253,9 +363,17 @@ def ver_agenda():
         retornos = cursor.fetchall() # Armazenar o resultado da query para retornos agendados
 
         return render_template('verAgenda.html', consultas=consultas, retornos=retornos)
+    except psycopg2.Error as e:
+            conexao.rollback()
+            print(f"Erro no banco de dados: {str(e)}")
+            flash(f"Ocorreu um erro no banco de dados: {str(e)}", 'error')
+            return redirect(url_for('verAgenda')) 
     except Exception as e:
-        print(f"Error : {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        #Fazer rollback em caso de erro
+        conexao.rollback()
+        print(f"Error inesperado: {str(e)}")
+        flash(f"Ocorreu um erro inesperado: {str(e)}", 'error')
+        return redirect(url_for('verAgenda'))
     finally:
         cursor.close()
         conexao.close()
@@ -294,6 +412,11 @@ def confirmar_consulta(agendamento_id):
         print("Consulta confirmada com sucesso!")
         flash("Consulta confirmada com sucesso!", "success")
         return redirect(url_for('ver_agenda'))
+    except psycopg2.Error as e:
+        conexao.rollback()
+        print(f"Erro no banco de dados: {str(e)}")
+        flash(f"Ocorreu um erro no banco de dados: {str(e)}", 'error')
+        return redirect(url_for('agendarRetorno')) 
     except Exception as e:
         #Desfazer transação
         conexao.rollback()
