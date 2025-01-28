@@ -1,13 +1,14 @@
 import psycopg2 #Para o banco de dados
-from psycopg2.extras import RealDictCursor #Extra para o banco de dados
+
+from psycopg2.extras import RealDictCursor #Isso servirá para retornar os dados do banco de dados em um dicionario
 
 from datetime import datetime #Para trabalhar com datas
 
 from flask import Flask #Para o desenvolvimento do app web
 
-from flask import request, jsonify, render_template #Para adicionar uma rota que faça com que o usuario possa adicionar dados no banco de dados
+from flask import request, render_template #Para adicionar uma rota que faça com que o usuario possa adicionar dados no banco de dados
 
-from flask import redirect, url_for, flash, session #Servirá para adicionar uma notificação pop-up na tela do navegador
+from flask import redirect, url_for, flash #Servirá para adicionar uma notificação pop-up na tela do navegador
 
 from datetime import datetime #Para trabalhar com datas (utilizado para adicionar o horário no banco de dados de "marcarConsulta")
 
@@ -136,6 +137,7 @@ def marcarConsulta():
                 idade, idade_tipo = calcular_idade_pet(datetime.strptime(data_nascimento, '%Y-%m-%d').date())
             else:
                 data_nascimento = None
+
             # Query para a tabela dos pets
             cursor.execute(
                 "INSERT INTO pets (nome, especie, raca, idade, sexo, peso, tutor_id, idade_tipo, data_nascimento) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
