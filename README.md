@@ -4,7 +4,8 @@
 ---
 Antes de tudo, vamos verificar o que eu fiz para poder iniciar o projeto:
 
-![image](https://github.com/user-attachments/assets/22f7fd27-d0b8-474c-8165-7683e24aff58)
+![image](https://github.com/user-attachments/assets/fc3b4daa-004c-4f7f-a95f-872523fcee06)
+
 
 Com isso feito, podemos já ir inserindo os codigos.
 
@@ -50,21 +51,28 @@ A questão ` options ` não é obrigatoria. Utilizei em meu codigo pois estava t
 
 ---
 
-### Toda essa parte a cima, foi somente para configurar: Importar Framework e bibliotecas; Criar uma instancia para criarmos nosso aplicativo; Fazer conexão com o banco de dados.
+### Tudo o que foi explicado agora foi somente para configurar nosso ambiente para o projeto. Importamos o Framework e suas bibliotecas; Criamos uma instancia para criar nosso aplicativo; Fazemos a conexão com o banco de dados.
 
 ---
 
-Depois de toda a configuração, criamos rotas, trabalhamos com rotas no Flask.
+Depois de toda a configuração, criamos as rotas, nela conterá toda a regra de negócio.
 
-Como nossa aplicação, por enquanto, é web, devemos criar paginas HTML, então, uma das rotas, será a nossa ` home `. Criamos uma landing page simples com links
+Como nossa aplicação é web, devemos criar paginas HTML, então, uma das rotas, será a nossa ` home `, essa rota tem que fazer renderizar a página Home. 
 
-![image](https://github.com/user-attachments/assets/5b0a4348-a85f-4cee-bac5-e60dbfd5d88f)
+Para isso, criamos uma landing page simples, já estilizada, com 3 botões: 
 
-Depois de criar a home, criamos tambem as outras paginas: ` marcar consulta ` e  ` agendar retorno ` (a fazer!).
+![image](https://github.com/user-attachments/assets/94dd9baa-8d48-49d5-8705-97ffe9eacdfa)
+
+
+Os 3 botões são links para outras de nossas páginas: ` Marcar Consulta `, ` Agendar Retorno `, ` Ver Agenda `.
 
 --- 
 
-Voltando para o codigo em python, criaremos a rota para o link ` marcar consulta `:
+
+
+Voltando para o codigo em python, criaremos a rota para a pagina ` Marcar Consulta `. A página em si é para inserir dados de cadastro, ela solicita dados do tutor, descrição do pet e a seleção para quando será a consulta!
+
+A rota servirá para coletar os dados do formulário e registrar no banco de dados através de uma Query. Veja a estrutura da rota:
 
 ~~~python
 @app.route('/marcarConsulta', methods=['GET','POST'])
@@ -84,12 +92,29 @@ def marcarConsulta():
             especie = request.form.get('especie')
             raca = request.form.get('raca')
             idade = request.form.get('idade')
+            idade_tipo = request.form.get('idade_tipo')
             sexo = request.form.get('sexo')
             peso = request.form.get('peso')
+            data_nascimento = request.form.get('data_nascimento')
+            data_consulta = request.form.get('data_consulta')
+            motivo = request.form.get('motivo')
+            hora_consulta = request.form.get('hora_consulta')
+            data_consulta_str = request.form.get('data_consulta')
 
+            #Combinar data e horario para criar um objeto datetime
+            try:
+                agendamento_datetime = datetime.strptime(f"{data_consulta_str} {hora_consulta}", '%Y-%m-%d %H:%M')
+                #Criamos a variavel para armazenar o valor, e utilizamos o "strptime" para converter a string para uma data, dentro do () passamos as variaveis que serão utilizadas para formatar a data e hora e a forma em que ela vai ser formatada
+            except ValueError:
+                flash('Formato de data ou hora inválido.', 'error')
+                return redirect(url_for('marcarConsulta'))
+                #"ValueError" nesse contexto significa que houve um erro ao formatar a data/hora
+            #Debug para saber se os valores estão corretos
             print(f'nome_tutor={nome_tutor}\ntelefone={telefone}\nemail={email}\nnome_pet={nome_pet}\nespecie={especie}\nraca={raca}\nidade={idade}\nsexo={sexo}\npeso={peso}')
-            
+
+            #Conexão com o banco de dados
             conexao = conexaoBD()
+            #Criamos um cursor, ele serve para interagirmos com o banco e fazer as querys
             cursor = conexao.cursor()
 
             # Query para a tabela dos tutores
@@ -101,24 +126,68 @@ def marcarConsulta():
             tutor_id = cursor.fetchone()[0]
             print(f'tutor_id={tutor_id}')
 
+            # Função para calcular a idade do pet mediante a data de nascimento
+            def calcular_idade_pet(data_nascimento):
+                if data_nascimento:
+                    today = date.today()
+                    age = today.year - data_nascimento.year
+
+                    if today.month < data_nascimento.month or (today.month == data_nascimento.month and today.day < data_nascimento.day):
+                        age -=1
+
+                    # Calcular a diferença em meses
+                    meses = (today.year - data_nascimento.year) * 12 + (today.month - data_nascimento.month)
+
+                    if meses < 12:
+                        return meses, 'Meses'
+                    else:
+                        return age, 'Anos'
+                else:
+                    return None, None
+
+            # Verificar se a data de nascimento existe, se não calcular a idade
+            if data_nascimento:
+                idade, idade_tipo = calcular_idade_pet(datetime.strptime(data_nascimento, '%Y-%m-%d').date())
+            else:
+                data_nascimento = None
+
             # Query para a tabela dos pets
             cursor.execute(
                 "INSERT INTO pets (nome, especie, raca, idade, sexo, peso, tutor_id) VALUES (%s, %s, %s, %s, %s, %s, %s)",
                 (nome_pet, especie, raca, idade, sexo, peso, tutor_id)
             )
+            # Obter o ID do pet inserido
+            pet_id = cursor.fetchone()[0]
+            print(f'pet_id={pet_id}')
+
+            # Query para a tabela dos agendamentos
+            cursor.execute(
+                "INSERT INTO agendamento (data_horario, motivo, pet_id) VALUES (%s, %s, %s) RETURNING id",
+                (agendamento_datetime, motivo, pet_id)
+            )
+            # Obter o ID do agendamento inserido
+            consulta_id = cursor.fetchone()[0]
+            print(f'consulta_id={consulta_id}')
             
             conexao.commit()
             cursor.close()
             conexao.close()
             
-            
-            print("Consulta marcada com sucesso!")
-            return jsonify({'message': 'Consulta marcada com sucesso!'}), 201
+            print("Consulta agendada com sucesso!")
+            flash('Consulta agendada com sucesso!', 'success')
+            return redirect(url_for('home'))
+        except psycopg2.Error as e:
+            conexao.rollback()
+            print(f"Erro no banco de dados: {str(e)}")
+            flash(f"Ocorreu um erro no banco de dados: {str(e)}", 'error')
+            return redirect(url_for('marcarConsulta'))    
         except Exception as e:
-            print(f"Error: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            #Fazer rollback em caso de erro
+            conexao.rollback()
+            print(f"Error inesperado: {str(e)}")
+            flash(f"Ocorreu um erro inesperado: {str(e)}", 'error')
+            return redirect(url_for('marcarConsulta'))
     if request.method == 'GET':
         print("GET")
     return render_template('marcarConsulta.html')
-    
 ~~~
